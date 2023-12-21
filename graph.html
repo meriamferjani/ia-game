@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Graph Visualization</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    body, html {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    #graph {
+      width: 100%;
+      height: 100%;
+    }
+
+    .node-label {
+      font-family: sans-serif;
+      font-size: 12px;
+    }
+
+    line {
+      stroke: #999;
+      stroke-opacity: 0.6;
+    }
+
+    circle {
+      stroke-width: 1.5;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div id="graph"></div>
+
+  <script>
+    // Create the graph object
+    const graph = {};
+    graph["E0"] = { id: "E0", neighbors: ["E1", "E2", "E3", "E4"] };
+    graph["E1"] = { id: "E1", neighbors: ["N1"], color: "red" };
+    graph["E2"] = { id: "E2", neighbors: ["N3"], color: "red" };
+    graph["E3"] = { id: "E3", neighbors: ["N4"], color: "green" };
+    graph["E4"] = { id: "E4", neighbors: ["N8"], color: "green" };
+    graph["N1"] = { id: "N1", neighbors: ["E1", "N2"] };
+    graph["N2"] = { id: "N2", neighbors: ["N1", "N3"] };
+    graph["N3"] = { id: "N3", neighbors: ["E2", "N2"] };
+    graph["N4"] = { id: "N4", neighbors: ["E3", "N5"] };
+    graph["N5"] = { id: "N5", neighbors: ["N4", "N6"] };
+    graph["N6"] = { id: "N6", neighbors: ["N5", "N7"] };
+    graph["N7"] = { id: "N7", neighbors: ["N6", "N8", "N9"] };
+    graph["N8"] = { id: "N8", neighbors: ["E4", "N7"] };
+    graph["N9"] = { id: "N9", neighbors: ["N7", "N10"] };
+    graph["N10"] = { id: "N10", neighbors: ["N11", "N12"] };
+    graph["N11"] = { id: "N11", neighbors: ["N10", "N13"] };
+    graph["N12"] = { id: "N12", neighbors: ["N10", "N13", "T"] };
+    graph["N13"] = { id: "N13", neighbors: ["N11", "N12"] };
+    graph["T"] = { id: "T", neighbors: ["N12"] };
+
+    // Initialize the D3.js graph
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+
+    const svg = d3.select("#graph")
+      .append("svg")
+      .attr("width", width)
+      .attr("height", height);
+
+    // Create the links between nodes
+    const links = Object.values(graph).flatMap(node =>
+      node.neighbors.map(neighbor => ({ source: node.id, target: neighbor }))
+    );
+
+    // Create the nodes
+    const nodes = Object.values(graph);
+
+    // Create the D3.js force simulation
+    const simulation = d3.forceSimulation(nodes)
+      .force("link", d3.forceLink(links).id(d => d.id))
+      .force("charge", d3.forceManyBody())
+      .force("center", d3.forceCenter(height / 2, width / 2));
+
+    // Draw the links
+    const link = svg.append("g")
+      .attr("stroke", "#999")
+      .attr("stroke-opacity", 0.6)
+      .selectAll("line")
+      .data(links)
+      .join("line");
+
+    // Draw the nodes
+    const node = svg.append("g")
+      .attr("stroke-width", 1.5)
+      .selectAll("circle")
+      .data(nodes)
+      .join("circle")
+      .attr("r", 8)
+      .attr("fill", d => {
+        if (d.color === "red") return "red";
+        if (d.color === "green") return "green";
+        return "black";
+      })
+      .attr("cx", d => d.y)
+      .attr("cy", d => d.x)
+      .call(drag(simulation));
+
+    // Add node labels
+    const nodeLabel = svg.append("g")
+      .selectAll("text")
+      .data(nodes)
+      .join("text")
+      .text(d => d.id)
+      .attr("class", "node-label")
+      .attr("x", d => d.y + 10)
+      .attr("y", d => d.x + 4);
+
+    // Update node and link positions on each tick of the simulation
+    simulation.on("tick", () => {
+      link
+        .attr("x1", d => d.source.y)
+        .attr("y1", d => d.source.x)
+        .attr("x2", d => d.target.y)
+        .attr("y2", d => d.target.x);
+
+      node
+        .attr("cx", d => d.y)
+        .attr("cy", d => d.x);
+
+      nodeLabel
+        .attr("x", d => d.y + 10)
+        .attr("y", d => d.x + 4);
+    });
+
+    // Function for drag behavior
+    function drag(simulation) {
+
+      function dragstarted(event, d) {
+        if (!event.active) simulation.alphaTarget(0.3).restart();
+        d.fx = d.x;
+        d.fy = d.y;
+      }
+
+      function dragged(event, d) {
+        d.fx = event.x;
+        d.fy = event.y;
+      }
+
+      function dragended(event, d) {
+        if (!event.active) simulation.alphaTarget(0);
+        d.fx = null;
+        d.fy = null;
+      }
+
+      return d3.drag()
+        .on("start", dragstarted)
+        .on("drag", dragged)
+        .on("end", dragended);
+    }
+  </script>
+</body>
+</html>
